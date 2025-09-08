@@ -25,27 +25,30 @@ class CourseSearchTool(Tool):
         self.last_sources = []  # 跟踪上次搜索的源
     
     def get_tool_definition(self) -> Dict[str, Any]:
-        """返回此工具的Anthropic工具定义"""
+        """返回此工具的OpenAI工具定义"""
         return {
-            "name": "search_course_content",
-            "description": "Search course materials with smart course name matching and lesson filtering",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string", 
-                        "description": "What to search for in the course content"
+            "type": "function",
+            "function": {
+                "name": "search_course_content",
+                "description": "搜索课程资料，支持智能课程名称匹配和课程筛选",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string", 
+                            "description": "要在课程内容中搜索的关键词或问题"
+                        },
+                        "course_name": {
+                            "type": "string",
+                            "description": "课程标题（支持部分匹配，如 'MCP', 'Introduction'）"
+                        },
+                        "lesson_number": {
+                            "type": "integer",
+                            "description": "要搜索的具体课程编号（如 1, 2, 3）"
+                        }
                     },
-                    "course_name": {
-                        "type": "string",
-                        "description": "Course title (partial matches work, e.g. 'MCP', 'Introduction')"
-                    },
-                    "lesson_number": {
-                        "type": "integer",
-                        "description": "Specific lesson number to search within (e.g. 1, 2, 3)"
-                    }
-                },
-                "required": ["query"]
+                    "required": ["query"]
+                }
             }
         }
     
@@ -134,7 +137,12 @@ class ToolManager:
     def register_tool(self, tool: Tool):
         """注册实现Tool接口的任何工具"""
         tool_def = tool.get_tool_definition()
-        tool_name = tool_def.get("name")
+        # 对于OpenAI格式，名称在function.name中
+        if "function" in tool_def:
+            tool_name = tool_def["function"].get("name")
+        else:
+            tool_name = tool_def.get("name")
+        
         if not tool_name:
             raise ValueError("Tool must have a 'name' in its definition")
         self.tools[tool_name] = tool

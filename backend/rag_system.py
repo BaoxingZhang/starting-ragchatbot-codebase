@@ -111,7 +111,7 @@ class RAGSystem:
             （响应，源列表 - 对于基于工具的方法为空）的元组
         """
         # 为AI创建具有明确指令的提示
-        prompt = f"""Answer this question about course materials: {query}"""
+        prompt = f"""请回答这个关于课程资料的问题：{query}"""
         
         # 如果会话存在则获取对话历史
         history = None
