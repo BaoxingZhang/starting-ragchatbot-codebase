@@ -19,7 +19,7 @@ class Config:
     # 文档处理设置
     CHUNK_SIZE: int = 800       # 用于向量存储的文本块大小
     CHUNK_OVERLAP: int = 100     # 块之间重叠的字符数
-    MAX_RESULTS: int = 5         # 返回的最大搜索结果数
+    MAX_RESULTS: int = 50        # 返回的最大搜索结果数
     MAX_HISTORY: int = 2         # 要记住的对话消息数量
     
     # 数据库路径

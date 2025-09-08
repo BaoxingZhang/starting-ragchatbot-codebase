@@ -147,15 +147,21 @@ class VectorStore:
                 "lesson_link": lesson.lesson_link
             })
         
+        metadata = {
+            "title": course.title if course.title is not None else "",
+            "lessons_json": json.dumps(lessons_metadata),  # 序列化为JSON字符串
+            "lesson_count": len(course.lessons)
+        }
+        
+        # 只有当值不为None时才添加可选字段
+        if course.instructor is not None:
+            metadata["instructor"] = course.instructor
+        if course.course_link is not None:
+            metadata["course_link"] = course.course_link
+            
         self.course_catalog.add(
             documents=[course_text],
-            metadatas=[{
-                "title": course.title,
-                "instructor": course.instructor,
-                "course_link": course.course_link,
-                "lessons_json": json.dumps(lessons_metadata),  # 序列化为JSON字符串
-                "lesson_count": len(course.lessons)
-            }],
+            metadatas=[metadata],
             ids=[course.title]
         )
     
@@ -165,13 +171,20 @@ class VectorStore:
             return
         
         documents = [chunk.content for chunk in chunks]
-        metadatas = [{
-            "course_title": chunk.course_title,
-            "lesson_number": chunk.lesson_number,
-            "chunk_index": chunk.chunk_index
-        } for chunk in chunks]
+        metadatas = []
+        for chunk in chunks:
+            metadata = {
+                "course_title": chunk.course_title if chunk.course_title is not None else "",
+                "chunk_index": chunk.chunk_index if chunk.chunk_index is not None else 0
+            }
+            # 只有当lesson_number不为None时才添加
+            if chunk.lesson_number is not None:
+                metadata["lesson_number"] = chunk.lesson_number
+            
+            metadatas.append(metadata)
+        
         # 使用标题和分块索引作为唯一ID
-        ids = [f"{chunk.course_title.replace(' ', '_')}_{chunk.chunk_index}" for chunk in chunks]
+        ids = [f"{chunk.course_title.replace(' ', '_') if chunk.course_title else 'unknown'}_{chunk.chunk_index}" for chunk in chunks]
         
         self.course_content.add(
             documents=documents,
