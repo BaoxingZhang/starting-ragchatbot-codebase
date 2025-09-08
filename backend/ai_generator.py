@@ -1,10 +1,11 @@
-import anthropic
+from openai import OpenAI
 from typing import List, Optional, Dict, Any
+import json
 
 class AIGenerator:
-    """Handles interactions with Anthropic's Claude API for generating responses"""
+    """处理与OpenAI API的交互以生成响应"""
     
-    # Static system prompt to avoid rebuilding on each call
+    # 静态系统提示词，避免每次调用时重新构建
     SYSTEM_PROMPT = """ You are an AI assistant specialized in course materials and educational content with access to a comprehensive search tool for course information.
 
 Search Tool Usage:
@@ -29,11 +30,11 @@ All responses must be:
 Provide only the direct answer to what was asked.
 """
     
-    def __init__(self, api_key: str, model: str):
-        self.client = anthropic.Anthropic(api_key=api_key)
+    def __init__(self, api_key: str, base_url: str, model: str):
+        self.client = OpenAI(api_key=api_key, base_url=base_url)
         self.model = model
         
-        # Pre-build base API parameters
+        # 预构建基础API参数
         self.base_params = {
             "model": self.model,
             "temperature": 0,
@@ -45,91 +46,95 @@ Provide only the direct answer to what was asked.
                          tools: Optional[List] = None,
                          tool_manager=None) -> str:
         """
-        Generate AI response with optional tool usage and conversation context.
+        生成AI响应，支持可选的工具使用和对话上下文。
         
         Args:
-            query: The user's question or request
-            conversation_history: Previous messages for context
-            tools: Available tools the AI can use
-            tool_manager: Manager to execute tools
+            query: 用户的问题或请求
+            conversation_history: 用于上下文的历史消息
+            tools: AI可以使用的可用工具
+            tool_manager: 执行工具的管理器
             
         Returns:
-            Generated response as string
+            生成的响应字符串
         """
         
-        # Build system content efficiently - avoid string ops when possible
-        system_content = (
-            f"{self.SYSTEM_PROMPT}\n\nPrevious conversation:\n{conversation_history}"
-            if conversation_history 
-            else self.SYSTEM_PROMPT
-        )
+        # 构建包含系统消息的消息列表
+        messages = [{"role": "system", "content": self.SYSTEM_PROMPT}]
         
-        # Prepare API call parameters efficiently
+        # 如果有可用的对话历史，则添加
+        if conversation_history:
+            messages.append({"role": "system", "content": f"Previous conversation:\n{conversation_history}"})
+        
+        # 添加用户查询
+        messages.append({"role": "user", "content": query})
+        
+        # 准备API调用参数
         api_params = {
             **self.base_params,
-            "messages": [{"role": "user", "content": query}],
-            "system": system_content
+            "messages": messages
         }
         
-        # Add tools if available
+        # 如果有可用工具则添加
         if tools:
             api_params["tools"] = tools
-            api_params["tool_choice"] = {"type": "auto"}
+            api_params["tool_choice"] = "auto"
         
-        # Get response from Claude
-        response = self.client.messages.create(**api_params)
+        # 从OpenAI获取响应
+        response = self.client.chat.completions.create(**api_params)
         
-        # Handle tool execution if needed
-        if response.stop_reason == "tool_use" and tool_manager:
+        # 如果需要则处理工具执行
+        if response.choices[0].message.tool_calls and tool_manager:
             return self._handle_tool_execution(response, api_params, tool_manager)
         
-        # Return direct response
-        return response.content[0].text
+        # 返回直接响应
+        return response.choices[0].message.content
     
     def _handle_tool_execution(self, initial_response, base_params: Dict[str, Any], tool_manager):
         """
-        Handle execution of tool calls and get follow-up response.
+        处理工具调用的执行并获取后续响应。
         
         Args:
-            initial_response: The response containing tool use requests
-            base_params: Base API parameters
-            tool_manager: Manager to execute tools
+            initial_response: 包含工具使用请求的响应
+            base_params: 基础API参数
+            tool_manager: 执行工具的管理器
             
         Returns:
-            Final response text after tool execution
+            工具执行后的最终响应文本
         """
-        # Start with existing messages
+        # 从现有消息开始
         messages = base_params["messages"].copy()
         
-        # Add AI's tool use response
-        messages.append({"role": "assistant", "content": initial_response.content})
+        # 添加AI的工具使用响应
+        messages.append({
+            "role": "assistant",
+            "content": initial_response.choices[0].message.content,
+            "tool_calls": initial_response.choices[0].message.tool_calls
+        })
         
-        # Execute all tool calls and collect results
-        tool_results = []
-        for content_block in initial_response.content:
-            if content_block.type == "tool_use":
-                tool_result = tool_manager.execute_tool(
-                    content_block.name, 
-                    **content_block.input
-                )
-                
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": content_block.id,
-                    "content": tool_result
-                })
+        # 执行所有工具调用并收集结果
+        for tool_call in initial_response.choices[0].message.tool_calls:
+            # 解析工具参数
+            tool_args = json.loads(tool_call.function.arguments) if tool_call.function.arguments else {}
+            
+            # 执行工具
+            tool_result = tool_manager.execute_tool(
+                tool_call.function.name,
+                **tool_args
+            )
+            
+            # 将工具结果添加到消息中
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": str(tool_result)
+            })
         
-        # Add tool results as single message
-        if tool_results:
-            messages.append({"role": "user", "content": tool_results})
-        
-        # Prepare final API call without tools
+        # 准备不包含工具的最终API调用
         final_params = {
             **self.base_params,
-            "messages": messages,
-            "system": base_params["system"]
+            "messages": messages
         }
         
-        # Get final response
-        final_response = self.client.messages.create(**final_params)
-        return final_response.content[0].text
+        # 获取最终响应
+        final_response = self.client.chat.completions.create(**final_params)
+        return final_response.choices[0].message.content

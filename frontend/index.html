@@ -6,52 +6,52 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Course Materials Assistant</title>
-    <link rel="stylesheet" href="style.css?v=9">
+    <title>课程资料智能助手</title>
+    <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Course Materials Assistant</h1>
-            <p class="subtitle">Ask questions about courses, instructors, and content</p>
+            <h1>课程资料智能助手</h1>
+            <p class="subtitle">询问课程、讲师和内容相关问题</p>
         </header>
 
         <div class="main-content">
-            <!-- Left Sidebar -->
+            <!-- 左侧边栏 -->
             <aside class="sidebar">
-                <!-- Course Stats -->
+                <!-- 课程统计 -->
                 <div class="sidebar-section">
                     <details class="stats-collapsible">
-                        <summary class="stats-header">Courses</summary>
+                        <summary class="stats-header">课程</summary>
                         <div class="course-stats" id="courseStats">
                             <div class="stat-item">
-                                <span class="stat-label">Number of courses:</span>
+                                <span class="stat-label">课程数量：</span>
                                 <span class="stat-value" id="totalCourses">-</span>
                             </div>
                             <div class="stat-item">
                                 <div class="course-titles" id="courseTitles">
-                                    <span class="loading">Loading...</span>
+                                    <span class="loading">加载中...</span>
                                 </div>
                             </div>
                         </div>
                     </details>
                 </div>
 
-                <!-- Suggested Questions -->
+                <!-- 建议问题 -->
                 <div class="sidebar-section">
                     <details class="suggested-collapsible">
-                        <summary class="suggested-header">Try asking:</summary>
+                        <summary class="suggested-header">试试问：</summary>
                         <div class="suggested-items">
-                            <button class="suggested-item" data-question="What is the outline of the &quot;MCP: Build Rich-Context AI Apps with Anthropic&quot; course?">Outline of a course</button>
-                            <button class="suggested-item" data-question="Are there any courses that include a Chatbot implementation?">Courses about Chatbot</button>
-                            <button class="suggested-item" data-question="Are there any courses that explain what RAG is?">Courses explaining RAG</button>
-                            <button class="suggested-item" data-question="What was covered in lesson 5 of the MCP course?">Details of a course's lesson</button>
+                            <button class="suggested-item" data-question="MCP: Build Rich-Context AI Apps with Anthropic 课程的大纲是什么？">课程大纲</button>
+                            <button class="suggested-item" data-question="有没有包含聊天机器人实现的课程？">聊天机器人相关课程</button>
+                            <button class="suggested-item" data-question="有没有解释什么是RAG的课程？">RAG相关课程</button>
+                            <button class="suggested-item" data-question="MCP课程第5课讲了什么内容？">课程详细内容</button>
                         </div>
                     </details>
                 </div>
             </aside>
 
-            <!-- Main Chat Area -->
+            <!-- 主要聊天区域 -->
             <main class="chat-main">
                 <div class="chat-container">
                     <div id="chatMessages" class="chat-messages"></div>
@@ -59,7 +59,7 @@
                         <input 
                             type="text" 
                             id="chatInput" 
-                            placeholder="Ask about courses, lessons, or specific content..."
+                            placeholder="询问课程、课时或具体内容..."
                             autocomplete="off"
                         >
                         <button id="sendButton">
@@ -76,6 +76,6 @@
 
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="script.js?v=9"></script>
+    <script src="script.js?v=10"></script>
 </body>
 </html>

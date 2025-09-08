@@ -7,7 +7,7 @@ from sentence_transformers import SentenceTransformer
 
 @dataclass
 class SearchResults:
-    """Container for search results with metadata"""
+    """带有元数据的搜索结果容器"""
     documents: List[str]
     metadata: List[Dict[str, Any]]
     distances: List[float]
@@ -15,7 +15,7 @@ class SearchResults:
     
     @classmethod
     def from_chroma(cls, chroma_results: Dict) -> 'SearchResults':
-        """Create SearchResults from ChromaDB query results"""
+        """从ChromaDB查询结果创建SearchResults"""
         return cls(
             documents=chroma_results['documents'][0] if chroma_results['documents'] else [],
             metadata=chroma_results['metadatas'][0] if chroma_results['metadatas'] else [],
@@ -24,35 +24,35 @@ class SearchResults:
     
     @classmethod
     def empty(cls, error_msg: str) -> 'SearchResults':
-        """Create empty results with error message"""
+        """创建带有错误消息的空结果"""
         return cls(documents=[], metadata=[], distances=[], error=error_msg)
     
     def is_empty(self) -> bool:
-        """Check if results are empty"""
+        """检查结果是否为空"""
         return len(self.documents) == 0
 
 class VectorStore:
-    """Vector storage using ChromaDB for course content and metadata"""
+    """使用ChromaDB进行课程内容和元数据的向量存储"""
     
     def __init__(self, chroma_path: str, embedding_model: str, max_results: int = 5):
         self.max_results = max_results
-        # Initialize ChromaDB client
+        # 初始化ChromaDB客户端
         self.client = chromadb.PersistentClient(
             path=chroma_path,
             settings=Settings(anonymized_telemetry=False)
         )
         
-        # Set up sentence transformer embedding function
+        # 设置句子变换器嵌入函数
         self.embedding_function = chromadb.utils.embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name=embedding_model
         )
         
-        # Create collections for different types of data
-        self.course_catalog = self._create_collection("course_catalog")  # Course titles/instructors
-        self.course_content = self._create_collection("course_content")  # Actual course material
+        # 为不同类型的数据创建集合
+        self.course_catalog = self._create_collection("course_catalog")  # 课程标题/讲师
+        self.course_content = self._create_collection("course_content")  # 实际课程材料
     
     def _create_collection(self, name: str):
-        """Create or get a ChromaDB collection"""
+        """创建或获取ChromaDB集合"""
         return self.client.get_or_create_collection(
             name=name,
             embedding_function=self.embedding_function
@@ -64,29 +64,29 @@ class VectorStore:
                lesson_number: Optional[int] = None,
                limit: Optional[int] = None) -> SearchResults:
         """
-        Main search interface that handles course resolution and content search.
+        处理课程解析和内容搜索的主搜索接口。
         
         Args:
-            query: What to search for in course content
-            course_name: Optional course name/title to filter by
-            lesson_number: Optional lesson number to filter by
-            limit: Maximum results to return
+            query: 在课程内容中要搜索的内容
+            course_name: 要过滤的可选课程名称/标题
+            lesson_number: 要过滤的可选课程编号
+            limit: 返回的最大结果数
             
         Returns:
-            SearchResults object with documents and metadata
+            带有文档和元数据的SearchResults对象
         """
-        # Step 1: Resolve course name if provided
+        # 第1步：如果提供了课程名称则解析
         course_title = None
         if course_name:
             course_title = self._resolve_course_name(course_name)
             if not course_title:
                 return SearchResults.empty(f"No course found matching '{course_name}'")
         
-        # Step 2: Build filter for content search
+        # 第2步：为内容搜索构建过滤器
         filter_dict = self._build_filter(course_title, lesson_number)
         
-        # Step 3: Search course content
-        # Use provided limit or fall back to configured max_results
+        # 第3步：搜索课程内容
+        # 使用提供的限制或回退到配置的最大结果
         search_limit = limit if limit is not None else self.max_results
         
         try:
@@ -100,7 +100,7 @@ class VectorStore:
             return SearchResults.empty(f"Search error: {str(e)}")
     
     def _resolve_course_name(self, course_name: str) -> Optional[str]:
-        """Use vector search to find best matching course by name"""
+        """使用向量搜索按名称查找最佳匹配课程"""
         try:
             results = self.course_catalog.query(
                 query_texts=[course_name],
@@ -108,7 +108,7 @@ class VectorStore:
             )
             
             if results['documents'][0] and results['metadatas'][0]:
-                # Return the title (which is now the ID)
+                # 返回标题（现在是ID）
                 return results['metadatas'][0][0]['title']
         except Exception as e:
             print(f"Error resolving course name: {e}")
@@ -116,11 +116,11 @@ class VectorStore:
         return None
     
     def _build_filter(self, course_title: Optional[str], lesson_number: Optional[int]) -> Optional[Dict]:
-        """Build ChromaDB filter from search parameters"""
+        """从搜索参数构建ChromaDB过滤器"""
         if not course_title and lesson_number is None:
             return None
             
-        # Handle different filter combinations
+        # 处理不同的过滤器组合
         if course_title and lesson_number is not None:
             return {"$and": [
                 {"course_title": course_title},
@@ -133,12 +133,12 @@ class VectorStore:
         return {"lesson_number": lesson_number}
     
     def add_course_metadata(self, course: Course):
-        """Add course information to the catalog for semantic search"""
+        """将课程信息添加到目录中以进行语义搜索"""
         import json
 
         course_text = course.title
         
-        # Build lessons metadata and serialize as JSON string
+        # 构建课程元数据并序列化为JSON字符串
         lessons_metadata = []
         for lesson in course.lessons:
             lessons_metadata.append({
@@ -153,14 +153,14 @@ class VectorStore:
                 "title": course.title,
                 "instructor": course.instructor,
                 "course_link": course.course_link,
-                "lessons_json": json.dumps(lessons_metadata),  # Serialize as JSON string
+                "lessons_json": json.dumps(lessons_metadata),  # 序列化为JSON字符串
                 "lesson_count": len(course.lessons)
             }],
             ids=[course.title]
         )
     
     def add_course_content(self, chunks: List[CourseChunk]):
-        """Add course content chunks to the vector store"""
+        """将课程内容分块添加到向量存储中"""
         if not chunks:
             return
         
@@ -170,7 +170,7 @@ class VectorStore:
             "lesson_number": chunk.lesson_number,
             "chunk_index": chunk.chunk_index
         } for chunk in chunks]
-        # Use title with chunk index for unique IDs
+        # 使用标题和分块索引作为唯一ID
         ids = [f"{chunk.course_title.replace(' ', '_')}_{chunk.chunk_index}" for chunk in chunks]
         
         self.course_content.add(
@@ -180,20 +180,20 @@ class VectorStore:
         )
     
     def clear_all_data(self):
-        """Clear all data from both collections"""
+        """清除两个集合中的所有数据"""
         try:
             self.client.delete_collection("course_catalog")
             self.client.delete_collection("course_content")
-            # Recreate collections
+            # 重新创建集合
             self.course_catalog = self._create_collection("course_catalog")
             self.course_content = self._create_collection("course_content")
         except Exception as e:
             print(f"Error clearing data: {e}")
     
     def get_existing_course_titles(self) -> List[str]:
-        """Get all existing course titles from the vector store"""
+        """从向量存储中获取所有现有课程标题"""
         try:
-            # Get all documents from the catalog
+            # 从目录中获取所有文档
             results = self.course_catalog.get()
             if results and 'ids' in results:
                 return results['ids']
@@ -203,7 +203,7 @@ class VectorStore:
             return []
     
     def get_course_count(self) -> int:
-        """Get the total number of courses in the vector store"""
+        """获取向量存储中课程的总数"""
         try:
             results = self.course_catalog.get()
             if results and 'ids' in results:
@@ -214,18 +214,18 @@ class VectorStore:
             return 0
     
     def get_all_courses_metadata(self) -> List[Dict[str, Any]]:
-        """Get metadata for all courses in the vector store"""
+        """获取向量存储中所有课程的元数据"""
         import json
         try:
             results = self.course_catalog.get()
             if results and 'metadatas' in results:
-                # Parse lessons JSON for each course
+                # 为每个课程解析课程JSON
                 parsed_metadata = []
                 for metadata in results['metadatas']:
                     course_meta = metadata.copy()
                     if 'lessons_json' in course_meta:
                         course_meta['lessons'] = json.loads(course_meta['lessons_json'])
-                        del course_meta['lessons_json']  # Remove the JSON string version
+                        del course_meta['lessons_json']  # 删除JSON字符串版本
                     parsed_metadata.append(course_meta)
                 return parsed_metadata
             return []
@@ -234,9 +234,9 @@ class VectorStore:
             return []
 
     def get_course_link(self, course_title: str) -> Optional[str]:
-        """Get course link for a given course title"""
+        """获取给定课程标题的课程链接"""
         try:
-            # Get course by ID (title is the ID)
+            # 通过ID获取课程（标题是ID）
             results = self.course_catalog.get(ids=[course_title])
             if results and 'metadatas' in results and results['metadatas']:
                 metadata = results['metadatas'][0]
@@ -247,17 +247,17 @@ class VectorStore:
             return None
     
     def get_lesson_link(self, course_title: str, lesson_number: int) -> Optional[str]:
-        """Get lesson link for a given course title and lesson number"""
+        """获取给定课程标题和课程编号的课程链接"""
         import json
         try:
-            # Get course by ID (title is the ID)
+            # 通过ID获取课程（标题是ID）
             results = self.course_catalog.get(ids=[course_title])
             if results and 'metadatas' in results and results['metadatas']:
                 metadata = results['metadatas'][0]
                 lessons_json = metadata.get('lessons_json')
                 if lessons_json:
                     lessons = json.loads(lessons_json)
-                    # Find the lesson with matching number
+                    # 查找匹配编号的课程
                     for lesson in lessons:
                         if lesson.get('lesson_number') == lesson_number:
                             return lesson.get('lesson_link')

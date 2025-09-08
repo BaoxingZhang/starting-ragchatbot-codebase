@@ -12,16 +12,16 @@ import os
 from config import config
 from rag_system import RAGSystem
 
-# Initialize FastAPI app
+# 初始化 FastAPI 应用
 app = FastAPI(title="Course Materials RAG System", root_path="")
 
-# Add trusted host middleware for proxy
+# 为代理添加可信主机中间件
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["*"]
 )
 
-# Enable CORS with proper settings for proxy
+# 为代理启用带有正确设置的 CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -31,38 +31,38 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Initialize RAG system
+# 初始化 RAG 系统
 rag_system = RAGSystem(config)
 
-# Pydantic models for request/response
+# 用于请求/响应的 Pydantic 模型
 class QueryRequest(BaseModel):
-    """Request model for course queries"""
+    """课程查询请求模型"""
     query: str
     session_id: Optional[str] = None
 
 class QueryResponse(BaseModel):
-    """Response model for course queries"""
+    """课程查询响应模型"""
     answer: str
     sources: List[str]
     session_id: str
 
 class CourseStats(BaseModel):
-    """Response model for course statistics"""
+    """课程统计响应模型"""
     total_courses: int
     course_titles: List[str]
 
-# API Endpoints
+# API 端点
 
 @app.post("/api/query", response_model=QueryResponse)
 async def query_documents(request: QueryRequest):
-    """Process a query and return response with sources"""
+    """处理查询并返回带有来源的响应"""
     try:
-        # Create session if not provided
+        # 如果未提供则创建会话
         session_id = request.session_id
         if not session_id:
             session_id = rag_system.session_manager.create_session()
         
-        # Process query using RAG system
+        # 使用 RAG 系统处理查询
         answer, sources = rag_system.query(request.query, session_id)
         
         return QueryResponse(
@@ -75,7 +75,7 @@ async def query_documents(request: QueryRequest):
 
 @app.get("/api/courses", response_model=CourseStats)
 async def get_course_stats():
-    """Get course analytics and statistics"""
+    """获取课程分析和统计信息"""
     try:
         analytics = rag_system.get_course_analytics()
         return CourseStats(
@@ -87,7 +87,7 @@ async def get_course_stats():
 
 @app.on_event("startup")
 async def startup_event():
-    """Load initial documents on startup"""
+    """启动时加载初始文档"""
     docs_path = "../docs"
     if os.path.exists(docs_path):
         print("Loading initial documents...")
@@ -97,7 +97,7 @@ async def startup_event():
         except Exception as e:
             print(f"Error loading documents: {e}")
 
-# Custom static file handler with no-cache headers for development
+# 为开发环境定制的静态文件处理器，带有无缓存头
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
@@ -108,12 +108,12 @@ class DevStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope):
         response = await super().get_response(path, scope)
         if isinstance(response, FileResponse):
-            # Add no-cache headers for development
+            # 为开发环境添加无缓存头
             response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"
         return response
     
     
-# Serve static files for the frontend
+# 为前端提供静态文件服务
 app.mount("/", StaticFiles(directory="../frontend", html=True), name="static")

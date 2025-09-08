@@ -2,27 +2,28 @@ import os
 from dataclasses import dataclass
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
+# 从 .env 文件加载环境变量
 load_dotenv()
 
 @dataclass
 class Config:
-    """Configuration settings for the RAG system"""
-    # Anthropic API settings
-    ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
-    ANTHROPIC_MODEL: str = "claude-sonnet-4-20250514"
+    """RAG 系统的配置设置"""
+    # OpenAI API 设置
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4")
     
-    # Embedding model settings
+    # 嵌入模型设置
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
     
-    # Document processing settings
-    CHUNK_SIZE: int = 800       # Size of text chunks for vector storage
-    CHUNK_OVERLAP: int = 100     # Characters to overlap between chunks
-    MAX_RESULTS: int = 5         # Maximum search results to return
-    MAX_HISTORY: int = 2         # Number of conversation messages to remember
+    # 文档处理设置
+    CHUNK_SIZE: int = 800       # 用于向量存储的文本块大小
+    CHUNK_OVERLAP: int = 100     # 块之间重叠的字符数
+    MAX_RESULTS: int = 5         # 返回的最大搜索结果数
+    MAX_HISTORY: int = 2         # 要记住的对话消息数量
     
-    # Database paths
-    CHROMA_PATH: str = "./chroma_db"  # ChromaDB storage location
+    # 数据库路径
+    CHROMA_PATH: str = "./chroma_db"  # ChromaDB 存储位置
 
 config = Config()
 
